@@ -4,12 +4,6 @@ import argparse
 import json
 
 base_url = "https://finviz.com/"
-
-parser = argparse.ArgumentParser()
-parser.add_argument('-p', '--strings_scrape',
-                    help="Provide strings to scrape the data")
-args = parser.parse_args()
-search_text = args.strings_scrape
 cookies = {
     'screenerUrl': 'screener.ashx?v=320&s=n_majornews',
     'pv_date': 'Sat Aug 08 2020 00:02:41 GMT+0530 (India Standard Time)',
@@ -30,36 +24,40 @@ headers = {
 }
 
 
-main_page_response = requests.get(base_url, headers=headers, cookies=cookies)
-main_soup = BeautifulSoup(main_page_response.content, 'html.parser')
-homepage_soup = main_soup.select('div[id*="homepage"] table tr')[5]
-data_dict = {}
-for ele in homepage_soup.findAll('tr')[2:]:
-    lis = [i.getText() for i in ele.findAll('td')]
-    if lis[0] == search_text:
-        data_dict['Ticker'] = lis[0]
-        data_dict['Last'] = lis[1]
-        data_dict['Change'] = lis[2]
-        data_dict['Volume'] = lis[3]
-        data_dict['Signal'] = lis[5]
-        sub_url = base_url + ele.find('a')['href']
-        subpage_response = requests.get(
-            sub_url, headers=headers, cookies=cookies)
-        soup = BeautifulSoup(subpage_response.content, 'html.parser')
-        table = soup.findAll("table", {"class": "snapshot-table2"})
-        lis_elements = [i.getText() for i in table[0].findAll('td')]
-        key = []
-        value = []
-        count = 1
-        for a in lis_elements:
-            if count % 2 != 0:
-                key.append(a)
-            else:
-                value.append(a)
-            count = count+1
-        for i, j in zip(key, value):
-            data_dict[i] = j
-        print("Searched Term : "+search_text)
-        print(data_dict)
-        with open("finviz.json", "a") as outfile:
-            json.dump(data_dict, outfile)
+def finviz_data_extractor(search_text):
+    main_page_response = requests.get(
+        base_url, headers=headers, cookies=cookies)
+    main_soup = BeautifulSoup(main_page_response.content, 'html.parser')
+    homepage_soup = main_soup.select('div[id*="homepage"] table tr')[5]
+    data_dict = {}
+    for ele in homepage_soup.findAll('tr')[2:]:
+        lis = [i.getText() for i in ele.findAll('td')]
+        if lis[0] == search_text:
+            data_dict['Ticker'] = lis[0]
+            data_dict['Last'] = lis[1]
+            data_dict['Change'] = lis[2]
+            data_dict['Volume'] = lis[3]
+            data_dict['Signal'] = lis[5]
+            sub_url = base_url + ele.find('a')['href']
+            subpage_response = requests.get(
+                sub_url, headers=headers, cookies=cookies)
+            soup = BeautifulSoup(subpage_response.content, 'html.parser')
+            fullname_block = soup.find('table', {"class": "fullview-title"})
+            fullname_block_lis = [i.getText()
+                                  for i in fullname_block.findAll('tr')]
+            data_dict["FullName"] = fullname_block_lis[1]
+            data_dict["Sector"] = fullname_block_lis[2]
+            table = soup.findAll("table", {"class": "snapshot-table2"})
+            lis_elements = [i.getText() for i in table[0].findAll('td')]
+            key = []
+            value = []
+            count = 1
+            for a in lis_elements:
+                if count % 2 != 0:
+                    key.append(a)
+                else:
+                    value.append(a)
+                count = count+1
+            for i, j in zip(key, value):
+                data_dict[i] = j
+    return data_dict
