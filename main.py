@@ -30,24 +30,36 @@ headers = {
 }
 
 
-search_texts = search_text.split(',')
-for text in search_texts:
-    url = base_url + "quote.ashx?t={0}&ty=c&p=d&b=1".format(text)
-    page_response = requests.get(url, headers=headers, cookies=cookies)
-    soup = BeautifulSoup(page_response.content, 'html.parser')
-    table = soup.findAll("table", {"class": "snapshot-table2"})
-    lis_elements = [i.getText() for i in table[0].findAll('td')]
-    key = []
-    value = []
-    count = 1
-    for a in lis_elements:
-        if count % 2 != 0:
-            key.append(a)
-        else:
-            value.append(a)
-        count = count+1
-    data_dict = {}
-    for i, j in zip(key, value):
-        data_dict[i] = j
-    with open("finviz.json", "a") as outfile:
-        json.dump(data_dict, outfile)
+main_page_response = requests.get(base_url, headers=headers, cookies=cookies)
+main_soup = BeautifulSoup(main_page_response.content, 'html.parser')
+homepage_soup = main_soup.select('div[id*="homepage"] table tr')[5]
+data_dict = {}
+for ele in homepage_soup.findAll('tr')[2:]:
+    lis = [i.getText() for i in ele.findAll('td')]
+    if lis[0] == search_text:
+        data_dict['Ticker'] = lis[0]
+        data_dict['Last'] = lis[1]
+        data_dict['Change'] = lis[2]
+        data_dict['Volume'] = lis[3]
+        data_dict['Signal'] = lis[5]
+        sub_url = base_url + ele.find('a')['href']
+        subpage_response = requests.get(
+            sub_url, headers=headers, cookies=cookies)
+        soup = BeautifulSoup(subpage_response.content, 'html.parser')
+        table = soup.findAll("table", {"class": "snapshot-table2"})
+        lis_elements = [i.getText() for i in table[0].findAll('td')]
+        key = []
+        value = []
+        count = 1
+        for a in lis_elements:
+            if count % 2 != 0:
+                key.append(a)
+            else:
+                value.append(a)
+            count = count+1
+        for i, j in zip(key, value):
+            data_dict[i] = j
+        print("Searched Term : "+search_text)
+        print(data_dict)
+        with open("finviz.json", "a") as outfile:
+            json.dump(data_dict, outfile)
