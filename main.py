@@ -1,7 +1,5 @@
 from bs4 import BeautifulSoup
-import requests
-import argparse
-import json
+from security import safe_requests
 
 base_url = "https://finviz.com/"
 cookies = {
@@ -25,8 +23,7 @@ headers = {
 
 
 def finviz_data_extractor(search_text):
-    main_page_response = requests.get(
-        base_url, headers=headers, cookies=cookies)
+    main_page_response = safe_requests.get(base_url, headers=headers, cookies=cookies)
     main_soup = BeautifulSoup(main_page_response.content, 'html.parser')
     homepage_soup = main_soup.select('div[id*="homepage"] table tr')[5]
     data_dict = {}
@@ -39,8 +36,7 @@ def finviz_data_extractor(search_text):
             data_dict['Volume'] = lis[3]
             data_dict['Signal'] = lis[5]
             sub_url = base_url + ele.find('a')['href']
-            subpage_response = requests.get(
-                sub_url, headers=headers, cookies=cookies)
+            subpage_response = safe_requests.get(sub_url, headers=headers, cookies=cookies)
             soup = BeautifulSoup(subpage_response.content, 'html.parser')
             fullname_block = soup.find('table', {"class": "fullview-title"})
             fullname_block_lis = [i.getText()
